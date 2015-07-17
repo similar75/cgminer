@@ -1,7 +1,7 @@
 /*
  * Copyright 2012-2013 Andrew Smith
  * Copyright 2012 Xiangfu <xiangfu@openmobilefree.com>
- * Copyright 2013-2014 Con Kolivas <kernel@kolivas.org>
+ * Copyright 2013-2015 Con Kolivas <kernel@kolivas.org>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -821,7 +821,7 @@ static void set_timing_mode(int this_option_offset, struct cgpu_info *icarus)
 	/* Set the time to detect a dead device to 30 full nonce ranges. */
 	fail_time = info->Hs * 0xffffffffull * 30.0;
 	/* Integer accuracy is definitely enough. */
-	info->fail_time = fail_time;
+	info->fail_time = fail_time + 1;
 }
 
 static uint32_t mask(int work_division)
@@ -1213,9 +1213,7 @@ static struct cgpu_info *icarus_detect_one(struct libusb_device *dev, struct usb
 
 	hex2bin((void *)(&workdata), golden_ob, sizeof(workdata));
 
-	info = (struct ICARUS_INFO *)calloc(1, sizeof(struct ICARUS_INFO));
-	if (unlikely(!info))
-		quit(1, "Failed to malloc ICARUS_INFO");
+	info = cgcalloc(1, sizeof(struct ICARUS_INFO));
 	icarus->device_data = (void *)info;
 
 	info->ident = usb_ident(icarus);
@@ -1229,8 +1227,10 @@ static struct cgpu_info *icarus_detect_one(struct libusb_device *dev, struct usb
 			info->timeout = ICARUS_WAIT_TIMEOUT;
 			break;
 		case IDENT_ANU:
-		case IDENT_AU3:
 			info->timeout = ANT_WAIT_TIMEOUT;
+			break;
+		case IDENT_AU3:
+			info->timeout = AU3_WAIT_TIMEOUT;
 			break;
 		case IDENT_CMR2:
 			if (found->intinfo_count != CAIRNSMORE2_INTS) {
@@ -1428,9 +1428,7 @@ retry:
 
 			cgtmp->usbinfo.usbstat = USB_NOSTAT;
 
-			intmp = (struct ICARUS_INFO *)malloc(sizeof(struct ICARUS_INFO));
-			if (unlikely(!intmp))
-				quit(1, "Failed2 to malloc ICARUS_INFO");
+			intmp = cgmalloc(sizeof(struct ICARUS_INFO));
 
 			cgtmp->device_data = (void *)intmp;
 
@@ -1539,9 +1537,7 @@ static struct cgpu_info *rock_detect_one(struct libusb_device *dev, struct usb_f
 		free(ob_hex);
 	}
 
-	info = (struct ICARUS_INFO *)calloc(1, sizeof(struct ICARUS_INFO));
-	if (unlikely(!info))
-		quit(1, "Failed to malloc ICARUS_INFO");
+	info = cgcalloc(1, sizeof(struct ICARUS_INFO));
 	(void)memset(info, 0, sizeof(struct ICARUS_INFO));
 	icarus->device_data = (void *)info;
 	icarus->usbdev->ident = info->ident = IDENT_LIN;
@@ -1595,6 +1591,7 @@ static struct cgpu_info *rock_detect_one(struct libusb_device *dev, struct usb_f
 				info->rmdev.def_frq = 330;
 				info->rmdev.max_frq = 400;
 				break;
+#if 0
 			case RM_PRODUCT_T2: // what's this?
 				newname = "LIX";
 				info->rmdev.product_id = ROCKMINER_T2;
@@ -1603,6 +1600,7 @@ static struct cgpu_info *rock_detect_one(struct libusb_device *dev, struct usb_f
 				info->rmdev.def_frq = 300;
 				info->rmdev.max_frq = 400;
 				break;
+#endif
 			case RM_PRODUCT_RBOX:
 				newname = "LIN"; // R-Box
 				info->rmdev.product_id = ROCKMINER_RBOX;
@@ -1724,7 +1722,7 @@ static bool icarus_prepare(struct thr_info *thr)
 	struct ICARUS_INFO *info = (struct ICARUS_INFO *)(icarus->device_data);
 
 	if (info->ant)
-		info->antworks = calloc(sizeof(struct work *), ANT_QUEUE_NUM);
+		info->antworks = cgcalloc(sizeof(struct work *), ANT_QUEUE_NUM);
 	return true;
 }
 
