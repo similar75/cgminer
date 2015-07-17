@@ -30,13 +30,8 @@
   defined(USE_HASHFAST) || defined(USE_BITFURY) || defined(USE_BLOCKERUPTER) || defined(USE_KLONDIKE) || \
 	defined(USE_KNC) || defined(USE_BAB) || defined(USE_DRILLBIT) || \
 	defined(USE_MINION) || defined(USE_COINTERRA) || defined(USE_BITMINE_A1) || \
-<<<<<<< HEAD
-	defined(USE_ANT_S1) || defined(USE_ANT_S2) || defined(USE_SP10) || defined(USE_SP30) || \
-	defined(USE_ICARUS) || defined(USE_HASHRATIO) || defined(USE_ZEUS)
-=======
 	defined(USE_ANT_S1) || defined(USE_ANT_S2) || defined(USE_ANT_S3) || defined(USE_SP10) || \
-	defined(USE_SP30) || defined(USE_ICARUS) || defined(USE_HASHRATIO)
->>>>>>> upstream/master
+	defined(USE_SP30) || defined(USE_ICARUS) || defined(USE_HASHRATIO) || defined(USE_ZEUS)
 #define HAVE_AN_ASIC 1
 #endif
 

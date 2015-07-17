@@ -206,11 +206,8 @@ static bool alt_status;
 static bool switch_status;
 static bool opt_submit_stale = true;
 static int opt_shares;
-<<<<<<< HEAD
 bool opt_fail_only;
 static int opt_fail_switch_delay = 300;
-=======
->>>>>>> upstream/master
 static bool opt_fix_protocol;
 bool opt_lowmem;
 bool opt_autofan;
@@ -1442,16 +1439,13 @@ static struct opt_table opt_config_table[] = {
 		     set_null, NULL, &opt_set_null,
 		     opt_hidden),
 	OPT_WITHOUT_ARG("--failover-only",
-<<<<<<< HEAD
 			opt_set_bool, &opt_fail_only,
 			"Don't leak work to backup pools when primary pool is lagging"),
 	OPT_WITH_ARG("--failover-switch-delay",
 		     set_int_1_to_65535, opt_show_intval, &opt_fail_switch_delay,
 		     "Seconds that a failed pool must be alive again before switching back"),
-=======
 			set_null, &opt_set_null,
 			opt_hidden),
->>>>>>> upstream/master
 	OPT_WITHOUT_ARG("--fix-protocol",
 			opt_set_bool, &opt_fix_protocol,
 			"Do not redirect to stratum protocol from GBT"),
@@ -3295,7 +3289,7 @@ static void print_status(int thr_id)
 
 static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
 {
-	json_t *val, *res, *err;
+json_t *val, *res, *err;
 	char *s;
 	bool rc = false;
 	int thr_id = work->thr_id;
@@ -3324,20 +3318,6 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
 		strcat(gbt_block, "fd"); // +2
 		__bin2hex(varint, (const unsigned char *)&val16, 2);
 	} else {
-<<<<<<< HEAD
-		char *hexstr;
-
-		endian_flip128(work->data, work->data);
-
-		/* build hex string */
-		/* only 118 bytes are used, but *coind servers expect 128 byte hex strings */
-		hexstr = bin2hex(work->data, 128);
-		s = strdup("{\"method\": \"getwork\", \"params\": [ \"");
-		s = realloc_strcat(s, hexstr);
-		s = realloc_strcat(s, "\" ], \"id\":1}");
-		free(hexstr);
-	}
-=======
 		uint32_t val32 = htole32(work->gbt_txns);
 
 		strcat(gbt_block, "fe"); // +2
@@ -3361,10 +3341,9 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
 		s = realloc_strcat(s, "\"}]}");
 	} else
 		s = realloc_strcat(s, "\"]}");
->>>>>>> upstream/master
 	applog(LOG_DEBUG, "DBG: sending %s submit RPC call: %s", pool->rpc_url, s);
 	s = realloc_strcat(s, "\n");
-
+	
 	cgtime(&tv_submit);
 	/* issue JSON-RPC request */
 	val = json_rpc_call(curl, pool->rpc_url, pool->rpc_userpass, s, false, false, &rolltime, pool, true);
@@ -9499,18 +9478,16 @@ int main(int argc, char *argv[])
 	if (want_per_device_stats)
 		opt_log_output = true;
 
-<<<<<<< HEAD
 	/* Use a shorter scantime for scrypt */
 	if (opt_scantime < 0)
 		opt_scantime = opt_scrypt ? 30 : 60;
-=======
+
 #ifdef HAVE_SYSLOG_H
 	if (opt_log_output)
 		setlogmask(LOG_UPTO(LOG_DEBUG));
 	else
 		setlogmask(LOG_UPTO(LOG_NOTICE));
 #endif
->>>>>>> upstream/master
 
 	total_control_threads = 8;
 	control_thr = cgcalloc(total_control_threads, sizeof(*thr));

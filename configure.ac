@@ -495,11 +495,7 @@ fi
 
 
 #Add a new device to this list if it needs libusb, along with a no on the end.
-<<<<<<< HEAD
 if test x$avalon$avalon2$avalon4$bitforce$bitfury$blockerupter$modminer$bflsc$icarus$hashfast$hashratio$klondike$drillbit$cointerra$ants1$ants2$zeus != xnononononononononononononononononono; then
-=======
-if test x$avalon$avalon2$avalon4$bitforce$bitfury$blockerupter$modminer$bflsc$icarus$hashfast$hashratio$klondike$drillbit$cointerra$ants1$ants3 != xnononononononononononononononono; then
->>>>>>> upstream/master
 	want_usbutils=true
 else
 	want_usbutils=false
@@ -896,11 +892,7 @@ else
 fi
 
 #Add any new device to this, along with a no on the end of the test
-<<<<<<< HEAD
 if test "x$avalon$avalon2$bab$bflsc$bitforce$bitfury$blockerupter$hashfast$hashratio$icarus$klondike$knc$modminer$drillbit$minion$cointerra$bitmine_A1$ants1$ants2$sp10$sp30$zeus" = xnononononononononononononononononononononono; then
-=======
-if test "x$avalon$avalon2$avalon4$bab$bflsc$bitforce$bitfury$blockerupter$hashfast$hashratio$icarus$klondike$knc$modminer$drillbit$minion$cointerra$bitmine_A1$ants1$ants2$ants3$sp10$sp30" = xnonononononononononononononononononononononono; then
->>>>>>> upstream/master
 	echo
 	AC_MSG_ERROR([No mining devices configured in])
 	echo
