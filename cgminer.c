@@ -1444,8 +1444,6 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITH_ARG("--failover-switch-delay",
 		     set_int_1_to_65535, opt_show_intval, &opt_fail_switch_delay,
 		     "Seconds that a failed pool must be alive again before switching back"),
-			set_null, &opt_set_null,
-			opt_hidden),
 	OPT_WITHOUT_ARG("--fix-protocol",
 			opt_set_bool, &opt_fix_protocol,
 			"Do not redirect to stratum protocol from GBT"),
