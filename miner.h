@@ -250,7 +250,8 @@ static inline int fsync (int fd)
 	DRIVER_ADD_COMMAND(bab) \
 	DRIVER_ADD_COMMAND(minion) \
 	DRIVER_ADD_COMMAND(sp10) \
-	DRIVER_ADD_COMMAND(sp30)
+	DRIVER_ADD_COMMAND(sp30) \
+	DRIVER_ADD_COMMAND(zeus)
 
 #define DRIVER_PARSE_COMMANDS(DRIVER_ADD_COMMAND) \
 	FPGA_PARSE_COMMANDS(DRIVER_ADD_COMMAND) \
@@ -1062,6 +1063,13 @@ extern cgsem_t usb_resource_sem;
 #ifdef USE_BITFORCE
 extern bool opt_bfl_noncerange;
 #endif
+#ifdef USE_ZEUS
+extern bool opt_zeus_debug;
+extern int opt_zeus_chips_count;
+extern int opt_zeus_chip_clk;
+extern bool opt_zeus_nocheck_golden;
+extern char *opt_zeus_options;
+#endif
 extern int swork_id;
 
 #if LOCK_TRACKING
@@ -1143,6 +1151,11 @@ extern bool use_syslog;
 extern bool opt_quiet;
 extern struct thr_info *control_thr;
 extern struct thr_info **mining_thr;
+#ifdef USE_SCRYPT
+extern bool opt_scrypt;
+#else
+#define opt_scrypt (0)
+#endif
 extern double total_secs;
 extern int mining_threads;
 extern int total_devices;
@@ -1271,6 +1284,7 @@ struct pool {
 
 	/* Stratum variables */
 	char *stratum_url;
+	bool extranonce_subscribe;
 	char *stratum_port;
 	SOCKETTYPE sock;
 	char *sockbuf;
@@ -1535,6 +1549,7 @@ enum api_data_type {
 	API_TIMEVAL,
 	API_TIME,
 	API_MHS,
+	API_KHS,
 	API_MHTOTAL,
 	API_TEMP,
 	API_UTILITY,
@@ -1578,6 +1593,7 @@ extern struct api_data *api_add_utility(struct api_data *root, char *name, doubl
 extern struct api_data *api_add_freq(struct api_data *root, char *name, double *data, bool copy_data);
 extern struct api_data *api_add_volts(struct api_data *root, char *name, float *data, bool copy_data);
 extern struct api_data *api_add_hs(struct api_data *root, char *name, double *data, bool copy_data);
+extern struct api_data *api_add_khs(struct api_data *root, char *name, double *data, bool copy_data);
 extern struct api_data *api_add_diff(struct api_data *root, char *name, double *data, bool copy_data);
 extern struct api_data *api_add_percent(struct api_data *root, char *name, double *data, bool copy_data);
 extern struct api_data *api_add_avg(struct api_data *root, char *name, float *data, bool copy_data);

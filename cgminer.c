@@ -54,6 +54,7 @@ char *curly = ":D";
 #include "compat.h"
 #include "miner.h"
 #include "bench_block.h"
+#include "scrypt.h"
 #ifdef USE_USBUTILS
 #include "usbutils.h"
 #endif
@@ -108,6 +109,10 @@ char *curly = ":D";
 #include "driver-bitmain.h"
 #endif
 
+#ifdef USE_ZEUS
+#include "driver-zeus.h"
+#endif
+
 #if defined(USE_BITFORCE) || defined(USE_ICARUS) || defined(USE_AVALON) || defined(USE_AVALON2) || defined(USE_MODMINER)
 #	define USE_FPGA
 #endif
@@ -146,6 +151,9 @@ enum benchwork {
 #ifdef HAVE_LIBCURL
 static char *opt_btc_address;
 static char *opt_btc_sig;
+#endif
+#ifdef USE_SCRYPT
+bool opt_scrypt;
 #endif
 static char *opt_benchfile;
 static bool opt_benchfile_display;
@@ -195,6 +203,7 @@ static bool switch_status;
 static bool opt_submit_stale = true;
 static int opt_shares;
 bool opt_fail_only;
+static int opt_fail_switch_delay = 300;
 static bool opt_fix_protocol;
 bool opt_lowmem;
 bool opt_autofan;
@@ -267,6 +276,13 @@ char *opt_bitmain_dev;
 #endif
 #ifdef USE_HASHFAST
 static char *opt_set_hfa_fan;
+#endif
+#ifdef USE_ZEUS
+bool opt_zeus_debug;
+int opt_zeus_chips_count;
+int opt_zeus_chip_clk;
+bool opt_zeus_nocheck_golden;
+char *opt_zeus_options;
 #endif
 static char *opt_set_null;
 #ifdef USE_MINION
@@ -801,6 +817,11 @@ static char __maybe_unused *set_int_0_to_4(const char *arg, int *i)
 	return set_int_range(arg, i, 0, 4);
 }
 
+static char *set_int_1_to_1024(const char *arg, int *i)
+{
+   return set_int_range(arg, i, 1, 1024);
+}
+
 #ifdef USE_FPGA_SERIAL
 static char *opt_add_serial;
 static char *add_serial(char *arg)
@@ -844,6 +865,7 @@ static char *set_rr(enum pool_strategy *strategy)
  * stratum+tcp or by detecting a stratum server response */
 bool detect_stratum(struct pool *pool, char *url)
 {
+	check_extranonce_option(pool, url);
 	if (!extract_sockaddr(url, &pool->sockaddr_url, &pool->stratum_port))
 		return false;
 
@@ -1118,6 +1140,11 @@ static char *set_null(const char __maybe_unused *arg)
 
 /* These options are available from config file or commandline */
 static struct opt_table opt_config_table[] = {
+#ifdef USE_SCRYPT
+	OPT_WITHOUT_ARG("--scrypt",
+			opt_set_bool, &opt_scrypt,
+			"Use the scrypt algorithm for mining"),
+#endif
 #ifdef USE_ICARUS
 	OPT_WITH_ARG("--anu-freq",
 		     set_float_125_to_500, &opt_show_floatval, &opt_anu_freq,
@@ -1382,6 +1409,9 @@ static struct opt_table opt_config_table[] = {
 	OPT_WITHOUT_ARG("--failover-only",
 			opt_set_bool, &opt_fail_only,
 			"Don't leak work to backup pools when primary pool is lagging"),
+	OPT_WITH_ARG("--failover-switch-delay",
+		     set_int_1_to_65535, opt_show_intval, &opt_fail_switch_delay,
+		     "Seconds that a failed pool must be alive again before switching back"),
 	OPT_WITHOUT_ARG("--fix-protocol",
 			opt_set_bool, &opt_fix_protocol,
 			"Do not redirect to a different getwork protocol (eg. stratum)"),
@@ -1632,6 +1662,23 @@ static struct opt_table opt_config_table[] = {
 			opt_set_bool, &opt_usb_list_all,
 			opt_hidden),
 #endif
+#ifdef USE_ZEUS
+	OPT_WITH_ARG("--zeus-chips",
+			set_int_1_to_1024, NULL, &opt_zeus_chips_count,
+			"Number of Zeus chips per device"),
+	OPT_WITH_ARG("--zeus-clock",
+			opt_set_intval, NULL, &opt_zeus_chip_clk,
+			"Zeus chip clock speed (MHz)"),
+	OPT_WITHOUT_ARG("--zeus-debug",
+			opt_set_bool, &opt_zeus_debug,
+			"Enable extra Zeus driver debugging output in verbose mode"),
+	OPT_WITHOUT_ARG("--zeus-nocheck-golden",
+			opt_set_bool, &opt_zeus_nocheck_golden,
+			"Skip golden nonce verification during initialization"),
+	OPT_WITH_ARG("--zeus-options",
+			opt_set_charp, NULL, &opt_zeus_options,
+			"Set individual Zeus device options: ID,chips,clock[;ID,chips,clock...]"),
+#endif
 	OPT_WITH_ARG("--user|-u",
 		     set_user, NULL, &opt_set_null,
 		     "Username for bitcoin JSON-RPC server"),
@@ -1850,7 +1897,7 @@ static char *opt_verusage_and_exit(const char *extra)
 		"cointerra "
 #endif
 #ifdef USE_DRILLBIT
-                "drillbit "
+      "drillbit "
 #endif
 #ifdef USE_HASHFAST
 		"hashfast "
@@ -1879,8 +1926,14 @@ static char *opt_verusage_and_exit(const char *extra)
 #ifdef USE_SP10
 		"spondoolies "
 #endif
+#ifdef USE_SCRYPT
+		"scrypt "
+#endif
 #ifdef USE_SP30
         "sp30 "
+#endif
+#ifdef USE_ZEUS
+		"Zeus "
 #endif
 
 		"mining support.\n"
@@ -3330,7 +3383,8 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
 		endian_flip128(work->data, work->data);
 
 		/* build hex string */
-		hexstr = bin2hex(work->data, 118);
+		/* only 118 bytes are used, but *coind servers expect 128 byte hex strings */
+		hexstr = bin2hex(work->data, 128);
 		s = strdup("{\"method\": \"getwork\", \"params\": [ \"");
 		s = realloc_strcat(s, hexstr);
 		s = realloc_strcat(s, "\" ], \"id\":1}");
@@ -3401,8 +3455,8 @@ static bool submit_upstream_work(struct work *work, CURL *curl, bool resubmit)
 
 			snprintf(worktime, sizeof(worktime),
 				" <-%08lx.%08lx M:%c D:%1.*f G:%02d:%02d:%02d:%1.3f %s (%1.3f) W:%1.3f (%1.3f) S:%1.3f R:%02d:%02d:%02d",
-				(unsigned long)be32toh(*(uint32_t *)&(work->data[28])),
-				(unsigned long)be32toh(*(uint32_t *)&(work->data[24])),
+				(unsigned long)be32toh(*(uint32_t *)&(work->data[opt_scrypt ? 32 : 28])),
+				(unsigned long)be32toh(*(uint32_t *)&(work->data[opt_scrypt ? 28 : 24])),
 				work->getwork_mode, diffplaces, work->work_difficulty,
 				tm_getwork.tm_hour, tm_getwork.tm_min,
 				tm_getwork.tm_sec, getwork_time, workclone,
@@ -4469,6 +4523,8 @@ uint64_t share_diff(const struct work *work)
 	uint64_t ret;
 
 	d64 = truediffone;
+	if (opt_scrypt)
+		d64 *= (double)65536;
 	s64 = le256todouble(work->hash);
 	if (unlikely(!s64))
 		s64 = 0;
@@ -4502,6 +4558,15 @@ static void regen_hash(struct work *work)
 	sha256(swap, 80, hash1);
 	sha256(hash1, 32, (unsigned char *)(work->hash));
 }
+
+static void rebuild_hash(struct work *work)
+{
+	if (opt_scrypt)
+		scrypt_regenhash(work);
+	else
+		regen_hash(work);
+}
+
 
 static bool cnx_needed(struct pool *pool);
 
@@ -6561,6 +6626,7 @@ static void *longpoll_thread(void *userdata);
 static bool stratum_works(struct pool *pool)
 {
 	applog(LOG_INFO, "Testing pool %d stratum %s", pool->pool_no, pool->stratum_url);
+	check_extranonce_option(pool, pool->stratum_url);
 	if (!extract_sockaddr(pool->stratum_url, &pool->sockaddr_url, &pool->stratum_port))
 		return false;
 
@@ -6669,6 +6735,7 @@ retry_stratum:
 		if (!init) {
 			bool ret = initiate_stratum(pool) && auth_stratum(pool);
 
+			extranonce_subscribe_stratum(pool);
 			if (ret)
 				init_stratum_threads(pool);
 			else
@@ -6942,6 +7009,8 @@ void set_target(unsigned char *dest_target, double diff)
 	}
 
 	d64 = truediffone;
+	if (opt_scrypt)
+		d64 *= (double)65536;
 	d64 /= diff;
 
 	dcut64 = d64 / bits192;
@@ -7373,7 +7442,7 @@ static void rebuild_nonce(struct work *work, uint32_t nonce)
 
 	*work_nonce = htole32(nonce);
 
-	regen_hash(work);
+	rebuild_hash(work);
 }
 
 /* For testing a nonce against diff 1 */
@@ -7382,7 +7451,7 @@ bool test_nonce(struct work *work, uint32_t nonce)
 	uint32_t *hash_32 = (uint32_t *)(work->hash + 28);
 
 	rebuild_nonce(work, nonce);
-	return (*hash_32 == 0);
+	return (*hash_32 <= (opt_scrypt ? 0x0000ffffUL : 0));
 }
 
 /* For testing a nonce against an arbitrary diff */
@@ -7391,7 +7460,7 @@ bool test_nonce_diff(struct work *work, uint32_t nonce, double diff)
 	uint64_t *hash64 = (uint64_t *)(work->hash + 24), diff64;
 
 	rebuild_nonce(work, nonce);
-	diff64 = 0x00000000ffff0000ULL;
+	diff64 = opt_scrypt ? 0x0000ffff00000000ULL : 0x00000000ffff0000ULL;
 	diff64 /= diff;
 
 	return (le64toh(*hash64) <= diff64);
@@ -7402,6 +7471,9 @@ static void update_work_stats(struct thr_info *thr, struct work *work)
 	double test_diff = current_diff;
 
 	work->share_diff = share_diff(work);
+	
+	if (opt_scrypt)
+		test_diff *= (double)65536;
 
 	if (unlikely(work->share_diff >= test_diff)) {
 		work->block = true;
@@ -8464,13 +8536,13 @@ static void *watchpool_thread(void __maybe_unused *userdata)
 			}
 
 			/* Only switch pools if the failback pool has been
-			 * alive for more than 5 minutes to prevent
+			 * alive for more than 5 minutes (default) to prevent
 			 * intermittently failing pools from being used. */
 			if (!pool->idle && pool_strategy == POOL_FAILOVER && pool->prio < cp_prio() &&
-			    now.tv_sec - pool->tv_idle.tv_sec > 300) {
-				applog(LOG_WARNING, "Pool %d %s stable for 5 mins",
-				       pool->pool_no, pool->rpc_url);
-				switch_pools(NULL);
+			   now.tv_sec - pool->tv_idle.tv_sec > opt_fail_switch_delay) {
+					applog(LOG_WARNING, "Pool %d %s stable for %d seconds",
+				   pool->pool_no, pool->rpc_url, opt_fail_switch_delay);
+					switch_pools(NULL);
 			}
 		}
 
@@ -9566,6 +9638,9 @@ int main(int argc, char *argv[])
 
 	if (opt_benchmark || opt_benchfile) {
 		struct pool *pool;
+		
+		if (opt_scrypt)
+			quit(1, "Cannot use benchmark mode with scrypt");
 
 		pool = add_pool();
 		pool->rpc_url = malloc(255);
@@ -9623,8 +9698,9 @@ int main(int argc, char *argv[])
 	if (want_per_device_stats)
 		opt_log_output = true;
 
+	/* Use a shorter scantime for scrypt */
 	if (opt_scantime < 0)
-		opt_scantime = 60;
+		opt_scantime = opt_scrypt ? 30 : 60;
 
 	total_control_threads = 8;
 	control_thr = calloc(total_control_threads, sizeof(*thr));

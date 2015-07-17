@@ -47,6 +47,10 @@ cgminer_SOURCES	+= klist.h klist.c
 
 cgminer_SOURCES	+= noncedup.c
 
+if HAS_SCRYPT
+cgminer_SOURCES += scrypt.c scrypt.h
+endif
+
 if NEED_FPGAUTILS
 cgminer_SOURCES += fpgautils.c fpgautils.h
 endif
@@ -162,4 +166,8 @@ endif
 
 if HAS_BLOCKERUPTER
 cgminer_SOURCES += driver-blockerupter.c driver-blockerupter.h
+endif
+
+if HAS_ZEUS
+cgminer_SOURCES += driver-zeus.c driver-zeus.h
 endif

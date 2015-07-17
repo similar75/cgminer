@@ -421,6 +421,28 @@ if test "x$sp30" = xyes; then
 fi
 AM_CONDITIONAL([HAS_SP30], [test x$sp30 = xyes])
 
+zeus="no"
+
+AC_ARG_ENABLE([zeus],
+	[AC_HELP_STRING([--enable-zeus],[Compile support for Zeusminer (default disabled) (EXPERIMENTAL)])],
+	[zeus=$enableval]
+)
+if test "x$zeus" = xyes; then
+	AC_DEFINE([USE_FPGA_SERIAL], [1], [Defined to 1 if serial support required])
+	AC_DEFINE([USE_ZEUS], [1], [Defined to 1 if Zeus support is wanted])
+fi
+AM_CONDITIONAL([HAS_ZEUS], [test x$zeus = xyes])
+
+scrypt="no"
+
+AC_ARG_ENABLE([scrypt],
+	[AC_HELP_STRING([--enable-scrypt],[Compile support for scrypt mining (default disabled)])],
+	[scrypt=$enableval]
+)
+if test "x$scrypt" = xyes; then
+	AC_DEFINE([USE_SCRYPT], [1], [Defined to 1 if scrypt support is wanted])
+fi
+AM_CONDITIONAL([HAS_SCRYPT], [test x$scrypt = xyes])
 
 forcecombo="no"
 
@@ -458,7 +480,7 @@ fi
 
 
 #Add a new device to this list if it needs libusb, along with a no on the end.
-if test x$avalon$avalon2$avalon4$bitforce$bitfury$blockerupter$modminer$bflsc$icarus$hashfast$hashratio$klondike$drillbit$cointerra$ants1$ants2 != xnononononononononononononononono; then
+if test x$avalon$avalon2$avalon4$bitforce$bitfury$blockerupter$modminer$bflsc$icarus$hashfast$hashratio$klondike$drillbit$cointerra$ants1$ants2$zeus != xnononononononononononononononononono; then
 	want_usbutils=true
 else
 	want_usbutils=false
@@ -476,7 +498,13 @@ else
 	want_crc16=false
 fi
 
-AM_CONDITIONAL([NEED_FPGAUTILS], [test x$modminer != xno])
+if test x$zeus != xno; then
+	want_libudev=true
+else
+	want_libudev=false
+fi
+
+AM_CONDITIONAL([NEED_FPGAUTILS], [test x$modminer$zeus != xnono])
 AM_CONDITIONAL([WANT_USBUTILS], [test x$want_usbutils != xfalse])
 AM_CONDITIONAL([WANT_LIBBITFURY], [test x$want_libbitfury != xfalse])
 AM_CONDITIONAL([HAVE_CURSES], [test x$curses = xyes])
@@ -650,6 +678,12 @@ fi
 
 echo "  curses.TUI...........: $cursesmsg"
 
+if test "x$scrypt" != xno; then
+	echo "  scrypt...............: Enabled"
+else
+	echo "  scrypt...............: Disabled"
+fi
+
 
 echo
 if test "x$ants1" = xyes; then
@@ -786,8 +820,14 @@ else
 	echo "  ModMiner.FPGAs.......: Disabled"
 fi
 
+if test "x$zeus" = xyes; then
+	echo "  Zeus.ASICs...........: Enabled"
+else
+	echo "  Zeus.ASICs...........: Disabled"
+fi
+
 #Add any new device to this, along with a no on the end of the test
-if test "x$avalon$avalon2$bab$bflsc$bitforce$bitfury$blockerupter$hashfast$hashratio$icarus$klondike$knc$modminer$drillbit$minion$cointerra$bitmine_A1$ants1$ants2$sp10$sp30" = xnononononononononononononononononononononono; then
+if test "x$avalon$avalon2$bab$bflsc$bitforce$bitfury$blockerupter$hashfast$hashratio$icarus$klondike$knc$modminer$drillbit$minion$cointerra$bitmine_A1$ants1$ants2$sp10$sp30$zeus" = xnononononononononononononononononononononono; then
 	echo
 	AC_MSG_ERROR([No mining devices configured in])
 	echo
