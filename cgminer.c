@@ -176,6 +176,7 @@ bool opt_compact;
 const int opt_cutofftemp = 95;
 int opt_log_interval = 5;
 static const int max_queue = 1;
+int opt_scantime = -1;
 const int max_scantime = 60;
 const int max_expiry = 600;
 unsigned long long global_hashrate;
